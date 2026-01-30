@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=68.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "wesense-ingester-core"
+version = "0.1.0"
+description = "Shared core library for WeSense sensor data ingesters"
+requires-python = ">=3.11"
+dependencies = [
+    "clickhouse-connect>=0.8.0",
+    "paho-mqtt>=2.0.0",
+    "reverse_geocoder==1.5.1",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0",
+]
+
+[tool.setuptools.packages.find]
+include = ["wesense_ingester*"]
