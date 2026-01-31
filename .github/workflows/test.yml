@@ -25,3 +25,24 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ -v
+
+  # After tests pass on main, trigger ingester rebuilds
+  trigger-ingester-builds:
+    needs: test
+    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        repo:
+          - wesense-ingester-meshtastic
+          - wesense-ingester-wesense
+          - wesense-ingester-homeassistant
+
+    steps:
+      - name: Trigger rebuild of ${{ matrix.repo }}
+        uses: peter-evans/repository-dispatch@v3
+        with:
+          token: ${{ secrets.CORE_DISPATCH_TOKEN }}
+          repository: wesense-earth/${{ matrix.repo }}
+          event-type: core-updated
