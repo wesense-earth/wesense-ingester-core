@@ -14,8 +14,14 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+p2p = [
+    "cryptography>=42.0.0",
+    "protobuf>=5.26.0",
+]
 dev = [
     "pytest>=7.0",
+    "cryptography>=42.0.0",
+    "protobuf>=5.26.0",
 ]
 
 [tool.setuptools.packages.find]

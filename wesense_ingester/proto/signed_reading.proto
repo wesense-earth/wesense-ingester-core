@@ -1,0 +1,9 @@
+syntax = "proto3";
+package wesense.p2p;
+
+message SignedReading {
+  bytes payload = 1;
+  bytes signature = 2;
+  string ingester_id = 3;
+  uint32 key_version = 4;
+}

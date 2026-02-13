@@ -68,6 +68,7 @@ class WeSensePublisher:
         self.config = config or MQTTPublisherConfig.from_env()
         self._client: Optional[mqtt.Client] = None
         self._connected = False
+        self._ever_connected = False
 
     def connect(self) -> None:
         """Connect to the MQTT broker."""
@@ -96,12 +97,16 @@ class WeSensePublisher:
     def _on_connect(self, client: Any, userdata: Any, flags: Any, rc: Any, properties: Any = None) -> None:
         """paho-mqtt v2 on_connect callback."""
         self._connected = True
+        self._ever_connected = True
         logger.info("MQTT publisher connected to %s:%d", self.config.broker, self.config.port)
 
     def _on_disconnect(self, client: Any, userdata: Any, flags: Any, rc: Any, properties: Any = None) -> None:
         """paho-mqtt v2 on_disconnect callback."""
         self._connected = False
-        logger.warning("MQTT publisher disconnected (rc=%s)", rc)
+        if self._ever_connected:
+            logger.warning("MQTT publisher disconnected (rc=%s)", rc)
+        else:
+            logger.debug("MQTT publisher connection attempt failed (rc=%s), will retry", rc)
 
     def publish_reading(self, reading: dict[str, Any]) -> bool:
         """
