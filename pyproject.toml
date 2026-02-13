@@ -25,5 +25,11 @@ dev = [
     "protobuf>=5.26.0",
 ]
 
+[tool.pytest.ini_options]
+markers = [
+    "integration: requires Docker and full p2p deps (deselected by default)",
+]
+addopts = "-m 'not integration'"
+
 [tool.setuptools.packages.find]
 include = ["wesense_ingester*"]
