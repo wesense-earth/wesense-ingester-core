@@ -2,9 +2,9 @@ name: Run Tests
 
 on:
   push:
-    branches: [main]
+    branches: [main, dev]
   pull_request:
-    branches: [main]
+    branches: [main, dev]
   workflow_dispatch:
 
 jobs:
@@ -26,10 +26,10 @@ jobs:
       - name: Run tests
         run: pytest tests/ -v
 
-  # After tests pass on main, trigger ingester rebuilds
+  # After tests pass, trigger ingester rebuilds (main and dev)
   trigger-ingester-builds:
     needs: test
-    if: github.ref == 'refs/heads/main' && github.event_name == 'push'
+    if: github.event_name == 'push'
     runs-on: ubuntu-latest
 
     strategy:
@@ -46,3 +46,4 @@ jobs:
           token: ${{ secrets.CORE_DISPATCH_TOKEN }}
           repository: wesense-earth/${{ matrix.repo }}
           event-type: core-updated
+          client-payload: '{"core_branch": "${{ github.ref_name }}"}'
