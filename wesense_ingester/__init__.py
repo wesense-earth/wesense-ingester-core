@@ -13,9 +13,13 @@ __all__ = [
     "BufferedClickHouseWriter",
     "ClickHouseConfig",
     "DeduplicationCache",
+    "IngesterKeyManager",
     "JSONDiskCache",
+    "KeyConfig",
     "MQTTPublisherConfig",
+    "ReadingSigner",
     "ReverseGeocoder",
+    "TrustStore",
     "WeSensePublisher",
     "generate_reading_id",
     "setup_logging",
@@ -35,5 +39,10 @@ def __getattr__(name: str):
     if name == "ReverseGeocoder":
         from wesense_ingester.geocoding.geocoder import ReverseGeocoder
         return ReverseGeocoder
+
+    if name in ("IngesterKeyManager", "KeyConfig", "ReadingSigner", "TrustStore"):
+        from wesense_ingester.signing import IngesterKeyManager, KeyConfig, ReadingSigner, TrustStore
+        return {"IngesterKeyManager": IngesterKeyManager, "KeyConfig": KeyConfig,
+                "ReadingSigner": ReadingSigner, "TrustStore": TrustStore}[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
