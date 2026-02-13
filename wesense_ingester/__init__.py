@@ -21,6 +21,10 @@ __all__ = [
     "ReverseGeocoder",
     "TrustStore",
     "WeSensePublisher",
+    "ZenohConfig",
+    "ZenohPublisher",
+    "ZenohQueryable",
+    "ZenohSubscriber",
     "generate_reading_id",
     "setup_logging",
 ]
@@ -44,5 +48,10 @@ def __getattr__(name: str):
         from wesense_ingester.signing import IngesterKeyManager, KeyConfig, ReadingSigner, TrustStore
         return {"IngesterKeyManager": IngesterKeyManager, "KeyConfig": KeyConfig,
                 "ReadingSigner": ReadingSigner, "TrustStore": TrustStore}[name]
+
+    if name in ("ZenohConfig", "ZenohPublisher", "ZenohSubscriber", "ZenohQueryable"):
+        from wesense_ingester.zenoh import ZenohConfig, ZenohPublisher, ZenohSubscriber, ZenohQueryable
+        return {"ZenohConfig": ZenohConfig, "ZenohPublisher": ZenohPublisher,
+                "ZenohSubscriber": ZenohSubscriber, "ZenohQueryable": ZenohQueryable}[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

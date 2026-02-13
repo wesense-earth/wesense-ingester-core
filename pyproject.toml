@@ -17,6 +17,7 @@ dependencies = [
 p2p = [
     "cryptography>=42.0.0",
     "protobuf>=5.26.0",
+    "eclipse-zenoh>=1.0.0",
 ]
 dev = [
     "pytest>=7.0",
