@@ -10,6 +10,10 @@ tests/test_publisher.py
 tests/test_reading_id.py
 tests/test_signer.py
 tests/test_trust.py
+tests/test_zenoh_config.py
+tests/test_zenoh_publisher.py
+tests/test_zenoh_queryable.py
+tests/test_zenoh_subscriber.py
 wesense_ingester/__init__.py
 wesense_ingester/cache/__init__.py
 wesense_ingester/cache/dedup.py
@@ -31,6 +35,11 @@ wesense_ingester/signing/__init__.py
 wesense_ingester/signing/keys.py
 wesense_ingester/signing/signer.py
 wesense_ingester/signing/trust.py
+wesense_ingester/zenoh/__init__.py
+wesense_ingester/zenoh/config.py
+wesense_ingester/zenoh/publisher.py
+wesense_ingester/zenoh/queryable.py
+wesense_ingester/zenoh/subscriber.py
 wesense_ingester_core.egg-info/PKG-INFO
 wesense_ingester_core.egg-info/SOURCES.txt
 wesense_ingester_core.egg-info/dependency_links.txt

@@ -10,6 +10,7 @@ Requires-Dist: reverse_geocoder==1.5.1
 Provides-Extra: p2p
 Requires-Dist: cryptography>=42.0.0; extra == "p2p"
 Requires-Dist: protobuf>=5.26.0; extra == "p2p"
+Requires-Dist: eclipse-zenoh>=1.0.0; extra == "p2p"
 Provides-Extra: dev
 Requires-Dist: pytest>=7.0; extra == "dev"
 Requires-Dist: cryptography>=42.0.0; extra == "dev"
