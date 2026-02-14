@@ -18,6 +18,8 @@ __all__ = [
     "KeyConfig",
     "MQTTPublisherConfig",
     "ReadingSigner",
+    "RegistryClient",
+    "RegistryConfig",
     "ReverseGeocoder",
     "TrustStore",
     "WeSensePublisher",
@@ -53,5 +55,9 @@ def __getattr__(name: str):
         from wesense_ingester.zenoh import ZenohConfig, ZenohPublisher, ZenohSubscriber, ZenohQueryable
         return {"ZenohConfig": ZenohConfig, "ZenohPublisher": ZenohPublisher,
                 "ZenohSubscriber": ZenohSubscriber, "ZenohQueryable": ZenohQueryable}[name]
+
+    if name in ("RegistryConfig", "RegistryClient"):
+        from wesense_ingester.registry import RegistryConfig, RegistryClient
+        return {"RegistryConfig": RegistryConfig, "RegistryClient": RegistryClient}[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
