@@ -24,8 +24,12 @@ _CONNECT_TIMEOUT = 5
 _READ_TIMEOUT = 10
 
 
-def _http_request(url: str, method: str = "GET", data: dict | None = None) -> dict | None:
-    """Send an HTTP request and return parsed JSON, or None on failure."""
+class OrbitDBError(Exception):
+    """Raised when OrbitDB is unreachable or returns an error."""
+
+
+def _http_request(url: str, method: str = "GET", data: dict | None = None) -> dict:
+    """Send an HTTP request and return parsed JSON. Raises OrbitDBError on failure."""
     body = None
     headers = {}
     if data is not None:
@@ -38,11 +42,11 @@ def _http_request(url: str, method: str = "GET", data: dict | None = None) -> di
         with urllib.request.urlopen(req, timeout=_READ_TIMEOUT) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
-        logger.warning("OrbitDB HTTP %s %s → %d: %s", method, url, e.code, e.reason)
-        return None
-    except (urllib.error.URLError, OSError, json.JSONDecodeError) as e:
-        logger.warning("OrbitDB request failed (%s %s): %s", method, url, e)
-        return None
+        raise OrbitDBError(f"HTTP {e.code} from {method} {url}: {e.reason}") from e
+    except (urllib.error.URLError, OSError) as e:
+        raise OrbitDBError(f"OrbitDB unreachable ({method} {url}): {e}") from e
+    except json.JSONDecodeError as e:
+        raise OrbitDBError(f"Invalid JSON from {method} {url}: {e}") from e
 
 
 class RegistryClient:
@@ -63,39 +67,28 @@ class RegistryClient:
     ) -> None:
         """
         Register this ingester's public key in OrbitDB (nodes + trust databases).
-
-        Non-blocking: runs in a short-lived daemon thread so startup isn't delayed.
-        If OrbitDB is down, the registration is silently skipped.
+        Raises OrbitDBError if OrbitDB is unreachable.
         """
         pub_b64 = base64.b64encode(public_key_bytes).decode()
+        base = self._config.url.rstrip("/")
 
-        def _register():
-            base = self._config.url.rstrip("/")
+        # PUT /nodes/{ingester_id}
+        node_data = {
+            "public_key": pub_b64,
+            "key_version": key_version,
+            **metadata,
+        }
+        _http_request(f"{base}/nodes/{ingester_id}", method="PUT", data=node_data)
+        logger.info("Registered node %s in OrbitDB", ingester_id)
 
-            # PUT /nodes/{ingester_id}
-            node_data = {
-                "public_key": pub_b64,
-                "key_version": key_version,
-                **metadata,
-            }
-            result = _http_request(f"{base}/nodes/{ingester_id}", method="PUT", data=node_data)
-            if result:
-                logger.info("Registered node %s in OrbitDB", ingester_id)
-            else:
-                logger.warning("Failed to register node %s — OrbitDB may be unavailable", ingester_id)
-
-            # PUT /trust/{ingester_id}
-            trust_data = {
-                "public_key": pub_b64,
-                "key_version": key_version,
-                "status": "active",
-            }
-            result = _http_request(f"{base}/trust/{ingester_id}", method="PUT", data=trust_data)
-            if result:
-                logger.info("Published trust entry for %s in OrbitDB", ingester_id)
-
-        t = threading.Thread(target=_register, daemon=True, name="orbitdb-register")
-        t.start()
+        # PUT /trust/{ingester_id}
+        trust_data = {
+            "public_key": pub_b64,
+            "key_version": key_version,
+            "status": "active",
+        }
+        _http_request(f"{base}/trust/{ingester_id}", method="PUT", data=trust_data)
+        logger.info("Published trust entry for %s in OrbitDB", ingester_id)
 
     def start_trust_sync(self) -> None:
         """Start background daemon thread that periodically fetches GET /trust
@@ -119,14 +112,14 @@ class RegistryClient:
         )
 
     def sync_trust_once(self) -> None:
-        """Single trust sync: GET /trust -> trust_store.update_from_dict()."""
+        """Single trust sync: GET /trust -> trust_store.update_from_dict().
+        Raises OrbitDBError if OrbitDB is unreachable."""
         base = self._config.url.rstrip("/")
         data = _http_request(f"{base}/trust")
-        if data and "keys" in data:
-            self._trust_store.update_from_dict(data)
-            logger.debug("Trust sync complete — %d ingesters", len(data["keys"]))
-        else:
-            logger.warning("Trust sync failed — OrbitDB may be unavailable")
+        if "keys" not in data:
+            raise OrbitDBError("OrbitDB /trust response missing 'keys' field")
+        self._trust_store.update_from_dict(data)
+        logger.debug("Trust sync complete — %d ingesters", len(data["keys"]))
 
     def close(self) -> None:
         """Signal sync thread to stop."""
