@@ -1,2 +1,2 @@
 from wesense_ingester.registry.config import RegistryConfig
-from wesense_ingester.registry.client import RegistryClient
+from wesense_ingester.registry.client import OrbitDBError, RegistryClient

@@ -8,14 +8,14 @@ from dataclasses import dataclass
 class RegistryConfig:
     """OrbitDB registry connection settings."""
 
-    enabled: bool = False
+    enabled: bool = True
     url: str = "http://wesense-orbitdb:5200"
     sync_interval: int = 3600  # seconds (1 hour)
 
     @classmethod
     def from_env(cls) -> "RegistryConfig":
         return cls(
-            enabled=os.getenv("ORBITDB_ENABLED", "false").lower() == "true",
+            enabled=os.getenv("ORBITDB_ENABLED", "true").lower() == "true",
             url=os.getenv("ORBITDB_URL", "http://wesense-orbitdb:5200"),
             sync_interval=int(os.getenv("ORBITDB_SYNC_INTERVAL", "3600")),
         )
