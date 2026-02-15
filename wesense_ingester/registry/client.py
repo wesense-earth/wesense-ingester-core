@@ -121,6 +121,26 @@ class RegistryClient:
         self._trust_store.update_from_dict(data)
         logger.debug("Trust sync complete — %d ingesters", len(data["keys"]))
 
+    def discover_zenoh_peers(self, exclude_ids: set[str] | None = None) -> list[str]:
+        """Fetch GET /nodes and return zenoh_endpoints of remote nodes.
+
+        Args:
+            exclude_ids: Ingester IDs to skip (e.g., local ingesters).
+
+        Returns:
+            List of zenoh endpoint strings (e.g., ["tcp/203.0.113.1:7447"]).
+        """
+        exclude = exclude_ids or set()
+        base = self._config.url.rstrip("/")
+        nodes = _http_request(f"{base}/nodes")
+        endpoints = []
+        for node in nodes:
+            nid = node.get("_id") or node.get("ingester_id", "")
+            ep = node.get("zenoh_endpoint", "")
+            if ep and nid not in exclude:
+                endpoints.append(ep)
+        return endpoints
+
     def close(self) -> None:
         """Signal sync thread to stop."""
         self._stop_event.set()
