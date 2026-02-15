@@ -122,23 +122,33 @@ class RegistryClient:
         logger.debug("Trust sync complete — %d ingesters", len(data["keys"]))
 
     def discover_zenoh_peers(self, exclude_ids: set[str] | None = None) -> list[str]:
-        """Fetch GET /nodes and return zenoh_endpoints of remote nodes.
+        """Fetch GET /nodes and return one zenoh_endpoint per remote node.
+
+        Prefers LAN endpoints (zenoh_endpoint_lan) over WAN endpoints
+        (zenoh_endpoint) to avoid NAT hairpin issues when peers are on
+        the same local network.
 
         Args:
             exclude_ids: Ingester IDs to skip (e.g., local ingesters).
 
         Returns:
-            List of zenoh endpoint strings (e.g., ["tcp/203.0.113.1:7447"]).
+            Deduplicated list of zenoh endpoint strings
+            (e.g., ["tcp/192.168.1.50:7447"]).
         """
         exclude = exclude_ids or set()
         base = self._config.url.rstrip("/")
         data = _http_request(f"{base}/nodes")
         endpoints = []
+        seen = set()
         for node in data.get("nodes", []):
             nid = node.get("_id") or node.get("ingester_id", "")
-            ep = node.get("zenoh_endpoint", "")
-            if ep and nid not in exclude:
+            if nid in exclude:
+                continue
+            # Prefer LAN endpoint, fall back to WAN
+            ep = node.get("zenoh_endpoint_lan") or node.get("zenoh_endpoint", "")
+            if ep and ep not in seen:
                 endpoints.append(ep)
+                seen.add(ep)
         return endpoints
 
     def close(self) -> None:
