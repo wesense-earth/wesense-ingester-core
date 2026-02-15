@@ -132,9 +132,9 @@ class RegistryClient:
         """
         exclude = exclude_ids or set()
         base = self._config.url.rstrip("/")
-        nodes = _http_request(f"{base}/nodes")
+        data = _http_request(f"{base}/nodes")
         endpoints = []
-        for node in nodes:
+        for node in data.get("nodes", []):
             nid = node.get("_id") or node.get("ingester_id", "")
             ep = node.get("zenoh_endpoint", "")
             if ep and nid not in exclude:
