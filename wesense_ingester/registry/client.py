@@ -98,7 +98,12 @@ class RegistryClient:
 
         def _sync_loop():
             while not self._stop_event.is_set():
-                self.sync_trust_once()
+                try:
+                    self.sync_trust_once()
+                except OrbitDBError as e:
+                    logger.warning("Trust sync failed (will retry): %s", e)
+                except Exception:
+                    logger.exception("Trust sync unexpected error (will retry)")
                 self._stop_event.wait(timeout=self._config.sync_interval)
 
         self._sync_thread = threading.Thread(
