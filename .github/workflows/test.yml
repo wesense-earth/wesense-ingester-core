@@ -39,6 +39,7 @@ jobs:
           - wesense-ingester-wesense
           - wesense-ingester-homeassistant
           - wesense-zenoh-bridge
+          - wesense-archiver
 
     steps:
       - name: Trigger rebuild of ${{ matrix.repo }}
