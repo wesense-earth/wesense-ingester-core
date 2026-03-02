@@ -13,6 +13,8 @@ __all__ = [
     "BufferedClickHouseWriter",
     "ClickHouseConfig",
     "DeduplicationCache",
+    "GatewayClient",
+    "GatewayConfig",
     "IngesterKeyManager",
     "JSONDiskCache",
     "KeyConfig",
@@ -59,5 +61,9 @@ def __getattr__(name: str):
     if name in ("RegistryConfig", "RegistryClient"):
         from wesense_ingester.registry import RegistryConfig, RegistryClient
         return {"RegistryConfig": RegistryConfig, "RegistryClient": RegistryClient}[name]
+
+    if name in ("GatewayClient", "GatewayConfig"):
+        from wesense_ingester.gateway import GatewayClient, GatewayConfig
+        return {"GatewayClient": GatewayClient, "GatewayConfig": GatewayConfig}[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")
