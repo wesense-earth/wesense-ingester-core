@@ -93,7 +93,14 @@ class GatewayClient:
                     "Gateway flush: %d readings (accepted=%d, duplicates=%d, errors=%d)",
                     len(batch), accepted, duplicates, errors,
                 )
-        except (urllib.error.HTTPError, urllib.error.URLError, OSError) as e:
+        except urllib.error.HTTPError as e:
+            detail = ""
+            try:
+                detail = e.read().decode()
+            except Exception:
+                pass
+            logger.error("Gateway flush failed (%d readings): %s %s", len(batch), e, detail)
+        except (urllib.error.URLError, OSError) as e:
             logger.error("Gateway flush failed (%d readings): %s", len(batch), e)
             self._total_failed += len(batch)
             # Return readings to buffer for retry, respecting max_buffer_size
