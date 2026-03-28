@@ -38,6 +38,7 @@ jobs:
           - wesense-ingester-meshtastic
           - wesense-ingester-wesense
           - wesense-ingester-homeassistant
+          - wesense-ingester-govaq-nz
           - wesense-zenoh-bridge
           - wesense-archiver
           - wesense-gateway
