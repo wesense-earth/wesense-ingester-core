@@ -57,6 +57,7 @@ class RegistryClient:
         self._trust_store = trust_store
         self._sync_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._pending_registration: dict | None = None
 
     def register_node(
         self,
@@ -67,16 +68,33 @@ class RegistryClient:
     ) -> None:
         """
         Register this ingester's public key in OrbitDB (nodes + trust databases).
-        Raises OrbitDBError if OrbitDB is unreachable.
+        Raises OrbitDBError if OrbitDB is unreachable. If registration fails,
+        it will be retried on each trust sync cycle.
         """
-        pub_b64 = base64.b64encode(public_key_bytes).decode()
+        # Store registration details for retry
+        self._pending_registration = {
+            "ingester_id": ingester_id,
+            "public_key_bytes": public_key_bytes,
+            "key_version": key_version,
+            "metadata": metadata,
+        }
+        self._do_register()
+
+    def _do_register(self) -> bool:
+        """Attempt to register in OrbitDB. Returns True on success."""
+        if not self._pending_registration:
+            return True
+
+        reg = self._pending_registration
+        pub_b64 = base64.b64encode(reg["public_key_bytes"]).decode()
         base = self._config.url.rstrip("/")
+        ingester_id = reg["ingester_id"]
 
         # PUT /nodes/{ingester_id}
         node_data = {
             "public_key": pub_b64,
-            "key_version": key_version,
-            **metadata,
+            "key_version": reg["key_version"],
+            **reg["metadata"],
         }
         _http_request(f"{base}/nodes/{ingester_id}", method="PUT", data=node_data)
         logger.info("Registered node %s in OrbitDB", ingester_id)
@@ -84,20 +102,32 @@ class RegistryClient:
         # PUT /trust/{ingester_id}
         trust_data = {
             "public_key": pub_b64,
-            "key_version": key_version,
+            "key_version": reg["key_version"],
             "status": "active",
         }
         _http_request(f"{base}/trust/{ingester_id}", method="PUT", data=trust_data)
         logger.info("Published trust entry for %s in OrbitDB", ingester_id)
 
+        self._pending_registration = None
+        return True
+
     def start_trust_sync(self) -> None:
         """Start background daemon thread that periodically fetches GET /trust
-        and updates the local TrustStore."""
+        and updates the local TrustStore. Also retries failed registration."""
         if self._sync_thread is not None:
             return
 
         def _sync_loop():
             while not self._stop_event.is_set():
+                # Retry registration if it failed at startup
+                if self._pending_registration:
+                    try:
+                        self._do_register()
+                    except OrbitDBError as e:
+                        logger.warning("Registration retry failed (will retry): %s", e)
+                    except Exception:
+                        logger.exception("Registration retry unexpected error")
+
                 try:
                     self.sync_trust_once()
                 except OrbitDBError as e:
