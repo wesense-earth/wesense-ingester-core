@@ -156,6 +156,63 @@ class RegistryClient:
         self._trust_store.update_from_dict(data)
         logger.debug("Trust sync complete — %d ingesters", len(data["keys"]))
 
+    def cleanup_stale_zenoh_entries(
+        self, own_bridge_id: str, local_ingester_ids: set[str],
+        is_proxied: bool = False,
+    ) -> None:
+        """Remove stale zenoh_endpoint values from OrbitDB nodes on this station.
+
+        Only cleans up entries whose ID is in ``local_ingester_ids`` (the set of
+        ingester IDs on this station, scanned from local key files). Does not
+        touch entries from other stations.
+
+        Handles two cases:
+          1. Old ingester entries on this station that registered zenoh_endpoint
+             before the Zenoh decoupling (only the bridge should register endpoints).
+          2. Role change from public to proxied — the bridge's own entry
+             should not have zenoh_endpoint when in proxy mode.
+        """
+        base = self._config.url.rstrip("/")
+        try:
+            data = _http_request(f"{base}/nodes")
+        except OrbitDBError as e:
+            logger.warning("Cleanup: could not fetch nodes: %s", e)
+            return
+
+        nodes = data.get("nodes", [])
+        cleaned = 0
+
+        for node in nodes:
+            nid = node.get("_id", "")
+            ep = node.get("zenoh_endpoint", "")
+
+            if not ep:
+                continue
+
+            # Only clean entries belonging to this station
+            if nid not in local_ingester_ids:
+                continue
+
+            # Case 1: non-bridge entry with zenoh_endpoint (stale ingester registration)
+            # Case 2: bridge's own entry when switching to proxy mode
+            should_clean = (nid != own_bridge_id) or is_proxied
+
+            if should_clean:
+                try:
+                    clean_data = {
+                        k: v for k, v in node.items()
+                        if k not in ("zenoh_endpoint", "zenoh_endpoint_lan", "_id")
+                    }
+                    _http_request(f"{base}/nodes/{nid}", method="PUT", data=clean_data)
+                    reason = "now proxied" if nid == own_bridge_id else "stale ingester endpoint"
+                    logger.info("Cleanup: removed zenoh_endpoint from %s (%s)", nid, reason)
+                    cleaned += 1
+                except OrbitDBError as e:
+                    logger.warning("Cleanup: failed to update %s: %s", nid, e)
+
+        if cleaned > 0:
+            logger.info("Cleanup: cleaned %d stale zenoh_endpoint(s) on this station", cleaned)
+
     def discover_zenoh_peers(self, exclude_ids: set[str] | None = None) -> list[str]:
         """Fetch GET /nodes and return one zenoh_endpoint per remote node.
 
