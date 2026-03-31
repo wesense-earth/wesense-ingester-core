@@ -39,9 +39,9 @@ jobs:
           - wesense-ingester-wesense
           - wesense-ingester-homeassistant
           - wesense-ingester-govaq-nz
-          - wesense-zenoh-bridge
+          - wesense-live-transport
           - wesense-archiver
-          - wesense-gateway
+          - wesense-storage-broker
 
     steps:
       - name: Trigger rebuild of ${{ matrix.repo }}
