@@ -37,15 +37,14 @@ class MQTTPublisherConfig:
     @classmethod
     def from_env(cls, client_id: str = "wesense-publisher") -> "MQTTPublisherConfig":
         """Create config from environment variables."""
-        use_tls = os.getenv("MQTT_USE_TLS", "").lower() in ("true", "1", "yes")
         return cls(
             broker=os.getenv("MQTT_BROKER", "localhost"),
-            port=int(os.getenv("MQTT_PORT", "8883" if use_tls else "1883")),
+            port=int(os.getenv("MQTT_PORT", "1883")),
             username=os.getenv("MQTT_USERNAME"),
             password=os.getenv("MQTT_PASSWORD"),
             client_id=client_id,
             topic_prefix=os.getenv("MQTT_TOPIC_PREFIX", "wesense/decoded"),
-            use_tls=use_tls,
+            use_tls=os.getenv("MQTT_USE_TLS", "").lower() in ("true", "1", "yes"),
             ca_certfile=os.getenv("TLS_CA_CERTFILE"),
         )
 
