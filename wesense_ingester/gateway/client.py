@@ -10,6 +10,8 @@ Uses only stdlib urllib — no requests dependency.
 
 import json
 import logging
+import os
+import ssl
 import threading
 import urllib.error
 import urllib.request
@@ -30,6 +32,11 @@ class GatewayClient:
 
     def __init__(self, config: Optional[GatewayConfig] = None):
         self.config = config or GatewayConfig.from_env()
+        self._ssl_context: Optional[ssl.SSLContext] = None
+        if self.config.tls_enabled:
+            self._ssl_context = ssl.create_default_context()
+            if self.config.tls_ca_certfile and os.path.exists(self.config.tls_ca_certfile):
+                self._ssl_context.load_verify_locations(self.config.tls_ca_certfile)
         self._buffer: list[dict] = []
         self._lock = threading.Lock()
         self._flush_timer: Optional[threading.Timer] = None
@@ -82,7 +89,7 @@ class GatewayClient:
         )
 
         try:
-            with urllib.request.urlopen(req, timeout=self.config.timeout) as resp:
+            with urllib.request.urlopen(req, timeout=self.config.timeout, context=self._ssl_context) as resp:
                 body = json.loads(resp.read().decode())
                 accepted = body.get("accepted", 0)
                 duplicates = body.get("duplicates", 0)
