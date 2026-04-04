@@ -39,9 +39,10 @@ class ClickHouseConfig:
     def from_env(cls) -> "ClickHouseConfig":
         """Create config from environment variables with sensible defaults."""
         tls_enabled = os.getenv("TLS_ENABLED", "").lower() == "true"
+        port = 8443 if tls_enabled else int(os.getenv("CLICKHOUSE_PORT", "8123"))
         return cls(
             host=os.getenv("CLICKHOUSE_HOST", "localhost"),
-            port=int(os.getenv("CLICKHOUSE_PORT", "8443" if tls_enabled else "8123")),
+            port=port,
             user=os.getenv("CLICKHOUSE_USER", "default"),
             password=os.getenv("CLICKHOUSE_PASSWORD", ""),
             database=os.getenv("CLICKHOUSE_DATABASE", "wesense"),
