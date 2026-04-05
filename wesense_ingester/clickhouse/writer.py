@@ -112,7 +112,8 @@ class BufferedClickHouseWriter:
             if self.config.tls_enabled:
                 ch_kwargs["secure"] = True
                 if self.config.tls_ca_certfile and os.path.exists(self.config.tls_ca_certfile):
-                    ch_kwargs["verify"] = self.config.tls_ca_certfile
+                    ch_kwargs["verify"] = True
+                    ch_kwargs["ca_cert"] = self.config.tls_ca_certfile
                 else:
                     ch_kwargs["verify"] = False
             self._client = clickhouse_connect.get_client(**ch_kwargs)
