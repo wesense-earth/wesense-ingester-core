@@ -8,6 +8,8 @@ Uses only stdlib urllib — no requests dependency.
 import base64
 import json
 import logging
+import os
+import ssl
 import threading
 import urllib.error
 import urllib.request
@@ -28,6 +30,14 @@ class OrbitDBError(Exception):
     """Raised when OrbitDB is unreachable or returns an error."""
 
 
+_ssl_context = None
+if os.getenv("TLS_ENABLED", "").lower() == "true":
+    _ssl_context = ssl.create_default_context()
+    ca_file = os.getenv("TLS_CA_CERTFILE", "")
+    if ca_file and os.path.exists(ca_file):
+        _ssl_context.load_verify_locations(ca_file)
+
+
 def _http_request(url: str, method: str = "GET", data: dict | None = None) -> dict:
     """Send an HTTP request and return parsed JSON. Raises OrbitDBError on failure."""
     body = None
@@ -39,7 +49,7 @@ def _http_request(url: str, method: str = "GET", data: dict | None = None) -> di
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
 
     try:
-        with urllib.request.urlopen(req, timeout=_READ_TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=_READ_TIMEOUT, context=_ssl_context) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         raise OrbitDBError(f"HTTP {e.code} from {method} {url}: {e.reason}") from e

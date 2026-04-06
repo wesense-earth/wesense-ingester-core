@@ -14,8 +14,11 @@ class RegistryConfig:
 
     @classmethod
     def from_env(cls) -> "RegistryConfig":
+        url = os.getenv("ORBITDB_URL", "http://wesense-orbitdb:5200")
+        if os.getenv("TLS_ENABLED", "").lower() == "true":
+            url = url.replace("http://", "https://")
         return cls(
             enabled=os.getenv("ORBITDB_ENABLED", "true").lower() == "true",
-            url=os.getenv("ORBITDB_URL", "http://wesense-orbitdb:5200"),
+            url=url,
             sync_interval=int(os.getenv("ORBITDB_SYNC_INTERVAL", "3600")),
         )
