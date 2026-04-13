@@ -8,6 +8,7 @@ from wesense_ingester.cache.dedup import DeduplicationCache
 from wesense_ingester.cache.disk_cache import JSONDiskCache
 from wesense_ingester.ids.reading_id import generate_reading_id
 from wesense_ingester.logging.setup import setup_logging
+from wesense_ingester.pipeline import ReadingPipeline, build_canonical, CANONICAL_FIELDS
 
 __all__ = [
     "BufferedClickHouseWriter",
@@ -29,6 +30,9 @@ __all__ = [
     "ZenohPublisher",
     "ZenohQueryable",
     "ZenohSubscriber",
+    "ReadingPipeline",
+    "build_canonical",
+    "CANONICAL_FIELDS",
     "generate_reading_id",
     "setup_logging",
 ]
