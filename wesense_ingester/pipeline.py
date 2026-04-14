@@ -19,6 +19,7 @@ from wesense_ingester.gateway.client import GatewayClient
 from wesense_ingester.gateway.config import GatewayConfig
 from wesense_ingester.geocoding.geocoder import ReverseGeocoder
 from wesense_ingester.mqtt.publisher import MQTTPublisherConfig, WeSensePublisher
+from wesense_ingester.reading_types import get_display_name
 from wesense_ingester.signing.keys import IngesterKeyManager, KeyConfig
 from wesense_ingester.signing.signer import ReadingSigner
 
@@ -30,6 +31,7 @@ CANONICAL_FIELDS = [
     "device_id",
     "timestamp",
     "reading_type",
+    "reading_type_name",
     "value",
     "unit",
     "latitude",
@@ -64,10 +66,18 @@ def build_canonical(reading: dict) -> dict:
     lon = reading.get("longitude")
     alt = reading.get("altitude")
 
+    reading_type = str(reading["reading_type"])
+    # Auto-fill reading_type_name from the registry if not provided.
+    # Adapters can override by setting it explicitly.
+    reading_type_name = str(
+        reading.get("reading_type_name") or get_display_name(reading_type)
+    )
+
     return {
         "device_id": str(reading["device_id"]),
         "timestamp": int(reading["timestamp"]),
-        "reading_type": str(reading["reading_type"]),
+        "reading_type": reading_type,
+        "reading_type_name": reading_type_name,
         "value": float(reading["value"]),
         "unit": str(reading.get("unit", "")),
         "latitude": float(lat) if lat is not None else None,
