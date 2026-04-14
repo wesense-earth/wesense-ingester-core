@@ -9,6 +9,7 @@ Adapters call pipeline.process(reading_dict) and never touch signing,
 MQTT publishing, or the gateway client directly.
 """
 
+import base64
 import json
 import logging
 import os
@@ -323,13 +324,20 @@ class ReadingPipeline:
         sig_hex = signed.signature.hex()
 
         # Signature metadata (travels alongside canonical, not part of it).
-        # signing_payload_version tells verifiers which builder produced the
-        # signed bytes — essential for long-term signature verification.
+        # - signing_payload_version tells verifiers which builder produced the
+        #   signed bytes — essential for long-term signature verification.
+        # - public_key lets archives be self-contained: given a reading row,
+        #   you have everything needed to verify it without any external trust
+        #   store lookup. See governance-and-trust.md.
+        public_key_b64 = base64.b64encode(
+            self._key_manager.public_key_bytes
+        ).decode("ascii")
         sig_fields = {
             "signature": sig_hex,
             "ingester_id": self._key_manager.ingester_id,
             "key_version": self._key_manager.key_version,
             "signing_payload_version": CURRENT_CANONICAL_VERSION,
+            "public_key": public_key_b64,
         }
 
         # 5. MQTT publish — canonical + signature
