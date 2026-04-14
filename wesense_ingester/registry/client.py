@@ -68,6 +68,10 @@ class RegistryClient:
         self._sync_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
         self._pending_registration: dict | None = None
+        # Set when the first trust sync completes (success or confirmed failure).
+        # Consumers that need a warm trust store before accepting P2P readings
+        # can wait on this via wait_for_initial_sync().
+        self._initial_sync_done = threading.Event()
 
     def register_node(
         self,
@@ -128,6 +132,7 @@ class RegistryClient:
             return
 
         def _sync_loop():
+            first_iteration = True
             while not self._stop_event.is_set():
                 # Retry registration if it failed at startup
                 if self._pending_registration:
@@ -144,6 +149,15 @@ class RegistryClient:
                     logger.warning("Trust sync failed (will retry): %s", e)
                 except Exception:
                     logger.exception("Trust sync unexpected error (will retry)")
+
+                # Signal that the initial sync has happened (whether successful
+                # or failed). Consumers waiting for a warm trust store can now
+                # proceed — if the sync failed, they'll start with whatever is
+                # in the local trust_list.json (possibly empty on fresh install).
+                if first_iteration:
+                    self._initial_sync_done.set()
+                    first_iteration = False
+
                 self._stop_event.wait(timeout=self._config.sync_interval)
 
         self._sync_thread = threading.Thread(
@@ -155,6 +169,21 @@ class RegistryClient:
             self._config.sync_interval,
             self._config.url,
         )
+
+    def wait_for_initial_sync(self, timeout: float = 60.0) -> bool:
+        """Block until the first trust sync cycle has completed.
+
+        Used by services (like the live transport bridge) that must have
+        a warm trust store before they start accepting P2P readings —
+        otherwise readings from valid ingesters are rejected during the
+        cold-start window.
+
+        Returns True if the initial sync completed within the timeout,
+        False if the timeout elapsed first. A False result does NOT mean
+        failure — the trust store will keep syncing in the background;
+        callers can choose whether to proceed anyway.
+        """
+        return self._initial_sync_done.wait(timeout=timeout)
 
     def sync_trust_once(self) -> None:
         """Single trust sync: GET /trust -> trust_store.update_from_dict().
