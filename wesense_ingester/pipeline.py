@@ -169,6 +169,7 @@ class ReadingPipeline:
         key_config: KeyConfig | None = None,
         enable_dedup: bool = True,
         enable_geocoder: bool = True,
+        enable_orbitdb_registry: bool = True,
         node_id: str | None = None,
     ):
         self._name = name
@@ -209,6 +210,51 @@ class ReadingPipeline:
         except Exception as e:
             logger.warning("No MQTT publisher: %s", e)
 
+        # OrbitDB registry — node registration + trust sync.
+        # The pipeline exposes self.trust_store for verifying inbound signatures
+        # (used by the live transport bridge; ingesters typically don't need
+        # to verify inbound, but having a consistent setup is harmless).
+        self._registry_client = None
+        self._trust_store = None
+        if enable_orbitdb_registry:
+            try:
+                # Lazy imports — these pull in heavier dependencies that some
+                # consumers (e.g. the storage broker when used standalone) don't need.
+                from wesense_ingester.registry import RegistryClient, RegistryConfig
+                from wesense_ingester.signing.trust import TrustStore
+
+                self._trust_store = TrustStore()
+                _reg_config = RegistryConfig.from_env()
+                if _reg_config.enabled:
+                    self._registry_client = RegistryClient(
+                        config=_reg_config,
+                        trust_store=self._trust_store,
+                    )
+                    try:
+                        self._registry_client.register_node(
+                            ingester_id=self._key_manager.ingester_id,
+                            public_key_bytes=self._key_manager.public_key_bytes,
+                            key_version=self._key_manager.key_version,
+                        )
+                    except Exception as e:
+                        logger.warning(
+                            "Pipeline '%s': OrbitDB registration failed (%s), "
+                            "will retry on next trust sync", name, e,
+                        )
+                    self._registry_client.start_trust_sync()
+                    logger.info(
+                        "Pipeline '%s': OrbitDB registry active (trust sync started)", name,
+                    )
+                else:
+                    logger.info(
+                        "Pipeline '%s': OrbitDB registry disabled (REGISTRY_ENABLED != true)",
+                        name,
+                    )
+            except Exception as e:
+                logger.warning(
+                    "Pipeline '%s': OrbitDB registry setup failed: %s", name, e,
+                )
+
     @property
     def ingester_id(self) -> str:
         """The pipeline's Ed25519 ingester identity (wsi_xxxxxxxx)."""
@@ -228,6 +274,16 @@ class ReadingPipeline:
     def geocoder(self) -> ReverseGeocoder | None:
         """Access the geocoder (for adapters that geocode before calling process)."""
         return self._geocoder
+
+    @property
+    def trust_store(self):
+        """Access the trust store (may be None if OrbitDB registry disabled)."""
+        return self._trust_store
+
+    @property
+    def registry_client(self):
+        """Access the OrbitDB registry client (may be None if disabled)."""
+        return self._registry_client
 
     def process(self, reading: dict) -> bool:
         """
@@ -304,6 +360,11 @@ class ReadingPipeline:
 
     def close(self) -> None:
         """Shut down all pipeline components."""
+        if self._registry_client:
+            try:
+                self._registry_client.stop_trust_sync()
+            except Exception as e:
+                logger.debug("Registry stop_trust_sync failed: %s", e)
         if self._gateway:
             self._gateway.close()
         if self._publisher:

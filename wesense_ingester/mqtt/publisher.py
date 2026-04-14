@@ -37,11 +37,15 @@ class MQTTPublisherConfig:
     @classmethod
     def from_env(cls, client_id: str = "wesense-publisher") -> "MQTTPublisherConfig":
         """Create config from environment variables."""
+        # Prefer WESENSE_OUTPUT_* env vars (for the decoded-output channel)
+        # and fall back to generic MQTT_* vars. Stations running input +
+        # output MQTT on different brokers set both; stations running one
+        # broker set only the generic vars. Either way works.
         return cls(
-            broker=os.getenv("MQTT_BROKER", "localhost"),
-            port=int(os.getenv("MQTT_PORT", "1883")),
-            username=os.getenv("MQTT_USERNAME"),
-            password=os.getenv("MQTT_PASSWORD"),
+            broker=os.getenv("WESENSE_OUTPUT_BROKER") or os.getenv("MQTT_BROKER", "localhost"),
+            port=int(os.getenv("WESENSE_OUTPUT_PORT") or os.getenv("MQTT_PORT", "1883")),
+            username=os.getenv("WESENSE_OUTPUT_USERNAME") or os.getenv("MQTT_USERNAME"),
+            password=os.getenv("WESENSE_OUTPUT_PASSWORD") or os.getenv("MQTT_PASSWORD"),
             client_id=client_id,
             topic_prefix=os.getenv("MQTT_TOPIC_PREFIX", "wesense/decoded"),
             use_tls=os.getenv("MQTT_USE_TLS", "").lower() in ("true", "1", "yes"),

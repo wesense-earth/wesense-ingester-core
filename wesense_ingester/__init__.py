@@ -15,6 +15,7 @@ from wesense_ingester.pipeline import (
     CANONICAL_FIELDS_V1,
     CURRENT_CANONICAL_VERSION,
 )
+from wesense_ingester.runtime import Shutdown
 
 __all__ = [
     "BufferedClickHouseWriter",
@@ -37,6 +38,7 @@ __all__ = [
     "ZenohQueryable",
     "ZenohSubscriber",
     "ReadingPipeline",
+    "Shutdown",
     "build_canonical",
     "CANONICAL_FIELDS",
     "generate_reading_id",
