@@ -14,9 +14,12 @@ consumers can read it from the database without code changes.
 READING_TYPES = {
     # Common environmental
     "temperature": ("Temperature", "°C"),
+    "temperature_5m": ("Temperature (5m)", "°C"),
+    "temperature_6m": ("Temperature (6m)", "°C"),
     "humidity": ("Humidity", "%"),
     "pressure": ("Pressure", "hPa"),
     "co2": ("CO₂", "ppm"),
+    "gas_resistance": ("Gas Resistance", "Ω"),
 
     # Particulate matter (mass concentration)
     "pm1_0": ("PM1.0", "µg/m³"),
