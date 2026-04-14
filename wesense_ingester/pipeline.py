@@ -25,9 +25,27 @@ from wesense_ingester.signing.signer import ReadingSigner
 
 logger = logging.getLogger(__name__)
 
-# Fields that form the canonical reading — signed and archived.
-# Order matters for documentation, not for signing (sort_keys=True handles that).
-CANONICAL_FIELDS = [
+# =============================================================================
+# Canonical reading versioning
+#
+# Each version of the canonical schema is FROZEN. Never modify CANONICAL_FIELDS_V1
+# or build_canonical_v1() — they must produce byte-identical output forever so
+# that signatures created in 2026 can still be verified in 2225.
+#
+# To add or change canonical fields:
+#   1. Define CANONICAL_FIELDS_V2 and build_canonical_v2()
+#   2. Bump CURRENT_CANONICAL_VERSION to 2
+#   3. Add v2 to the CANONICAL_BUILDERS dispatcher
+#   4. Readings signed under v1 continue to verify against build_canonical_v1
+#
+# The signing_payload_version field on every reading tells verifiers which
+# builder to use. This is the forward-compatibility guarantee.
+# =============================================================================
+
+CURRENT_CANONICAL_VERSION = 1
+
+# v1 — frozen 2026-04-14. DO NOT MODIFY.
+CANONICAL_FIELDS_V1 = [
     "device_id",
     "timestamp",
     "reading_type",
@@ -54,21 +72,22 @@ CANONICAL_FIELDS = [
     "data_license",
 ]
 
+# Backward-compat alias — current version's fields (what new code uses today)
+CANONICAL_FIELDS = CANONICAL_FIELDS_V1
 
-def build_canonical(reading: dict) -> dict:
+
+def build_canonical_v1(reading: dict) -> dict:
     """
-    Build the canonical reading from adapter input.
+    Build the v1 canonical reading. FROZEN — do not modify.
 
-    Enforces types, fills defaults, strips non-canonical fields.
-    The output is what gets signed and archived — identical on every path.
+    Version 1 was frozen on 2026-04-14 with 24 fields. Any change to
+    canonical field names, types, or defaults requires a new version.
     """
     lat = reading.get("latitude")
     lon = reading.get("longitude")
     alt = reading.get("altitude")
 
     reading_type = str(reading["reading_type"])
-    # Auto-fill reading_type_name from the registry if not provided.
-    # Adapters can override by setting it explicitly.
     reading_type_name = str(
         reading.get("reading_type_name") or get_display_name(reading_type)
     )
@@ -99,6 +118,34 @@ def build_canonical(reading: dict) -> dict:
         "location_source": str(reading.get("location_source", "")),
         "data_license": str(reading.get("data_license", "CC-BY-4.0")),
     }
+
+
+# Dispatcher: version number → builder function
+# When adding v2, add the entry here too.
+CANONICAL_BUILDERS = {
+    1: build_canonical_v1,
+}
+
+
+def build_canonical(reading: dict, version: int | None = None) -> dict:
+    """
+    Build the canonical reading using the requested version's builder.
+
+    If version is None, uses CURRENT_CANONICAL_VERSION (for signing new readings).
+    Verifiers pass the version from the reading to reproduce the exact payload
+    that was originally signed.
+
+    Raises ValueError for unknown versions.
+    """
+    v = version if version is not None else CURRENT_CANONICAL_VERSION
+    builder = CANONICAL_BUILDERS.get(v)
+    if builder is None:
+        raise ValueError(
+            f"Unknown canonical version {v}. "
+            f"This code only knows versions {sorted(CANONICAL_BUILDERS.keys())}. "
+            f"Upgrade the station to support newer signatures."
+        )
+    return builder(reading)
 
 
 def canonical_to_json(canonical: dict) -> bytes:
@@ -219,11 +266,14 @@ class ReadingPipeline:
         signed = self._signer.sign(canonical_bytes)
         sig_hex = signed.signature.hex()
 
-        # Signature metadata (travels alongside canonical, not part of it)
+        # Signature metadata (travels alongside canonical, not part of it).
+        # signing_payload_version tells verifiers which builder produced the
+        # signed bytes — essential for long-term signature verification.
         sig_fields = {
             "signature": sig_hex,
             "ingester_id": self._key_manager.ingester_id,
             "key_version": self._key_manager.key_version,
+            "signing_payload_version": CURRENT_CANONICAL_VERSION,
         }
 
         # 5. MQTT publish — canonical + signature

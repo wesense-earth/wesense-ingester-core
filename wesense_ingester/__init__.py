@@ -8,7 +8,13 @@ from wesense_ingester.cache.dedup import DeduplicationCache
 from wesense_ingester.cache.disk_cache import JSONDiskCache
 from wesense_ingester.ids.reading_id import generate_reading_id
 from wesense_ingester.logging.setup import setup_logging
-from wesense_ingester.pipeline import ReadingPipeline, build_canonical, CANONICAL_FIELDS
+from wesense_ingester.pipeline import (
+    ReadingPipeline,
+    build_canonical,
+    CANONICAL_FIELDS,
+    CANONICAL_FIELDS_V1,
+    CURRENT_CANONICAL_VERSION,
+)
 
 __all__ = [
     "BufferedClickHouseWriter",
