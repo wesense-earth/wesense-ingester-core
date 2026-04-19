@@ -8,11 +8,21 @@ from wesense_ingester.cache.dedup import DeduplicationCache
 from wesense_ingester.cache.disk_cache import JSONDiskCache
 from wesense_ingester.ids.reading_id import generate_reading_id
 from wesense_ingester.logging.setup import setup_logging
+from wesense_ingester.pipeline import (
+    ReadingPipeline,
+    build_canonical,
+    CANONICAL_FIELDS,
+    CANONICAL_FIELDS_V1,
+    CURRENT_CANONICAL_VERSION,
+)
+from wesense_ingester.runtime import Shutdown
 
 __all__ = [
     "BufferedClickHouseWriter",
     "ClickHouseConfig",
     "DeduplicationCache",
+    "GatewayClient",
+    "GatewayConfig",
     "IngesterKeyManager",
     "JSONDiskCache",
     "KeyConfig",
@@ -27,6 +37,10 @@ __all__ = [
     "ZenohPublisher",
     "ZenohQueryable",
     "ZenohSubscriber",
+    "ReadingPipeline",
+    "Shutdown",
+    "build_canonical",
+    "CANONICAL_FIELDS",
     "generate_reading_id",
     "setup_logging",
 ]
@@ -59,5 +73,9 @@ def __getattr__(name: str):
     if name in ("RegistryConfig", "RegistryClient"):
         from wesense_ingester.registry import RegistryConfig, RegistryClient
         return {"RegistryConfig": RegistryConfig, "RegistryClient": RegistryClient}[name]
+
+    if name in ("GatewayClient", "GatewayConfig"):
+        from wesense_ingester.gateway import GatewayClient, GatewayConfig
+        return {"GatewayClient": GatewayClient, "GatewayConfig": GatewayConfig}[name]
 
     raise AttributeError(f"module {__name__!r} has no attribute {name!r}")

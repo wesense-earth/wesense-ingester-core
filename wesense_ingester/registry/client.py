@@ -8,6 +8,8 @@ Uses only stdlib urllib — no requests dependency.
 import base64
 import json
 import logging
+import os
+import ssl
 import threading
 import urllib.error
 import urllib.request
@@ -28,6 +30,14 @@ class OrbitDBError(Exception):
     """Raised when OrbitDB is unreachable or returns an error."""
 
 
+_ssl_context = None
+if os.getenv("TLS_ENABLED", "").lower() == "true":
+    _ssl_context = ssl.create_default_context()
+    ca_file = os.getenv("TLS_CA_CERTFILE", "")
+    if ca_file and os.path.exists(ca_file):
+        _ssl_context.load_verify_locations(ca_file)
+
+
 def _http_request(url: str, method: str = "GET", data: dict | None = None) -> dict:
     """Send an HTTP request and return parsed JSON. Raises OrbitDBError on failure."""
     body = None
@@ -39,7 +49,7 @@ def _http_request(url: str, method: str = "GET", data: dict | None = None) -> di
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
 
     try:
-        with urllib.request.urlopen(req, timeout=_READ_TIMEOUT) as resp:
+        with urllib.request.urlopen(req, timeout=_READ_TIMEOUT, context=_ssl_context) as resp:
             return json.loads(resp.read().decode())
     except urllib.error.HTTPError as e:
         raise OrbitDBError(f"HTTP {e.code} from {method} {url}: {e.reason}") from e
@@ -57,6 +67,11 @@ class RegistryClient:
         self._trust_store = trust_store
         self._sync_thread: threading.Thread | None = None
         self._stop_event = threading.Event()
+        self._pending_registration: dict | None = None
+        # Set when the first trust sync completes (success or confirmed failure).
+        # Consumers that need a warm trust store before accepting P2P readings
+        # can wait on this via wait_for_initial_sync().
+        self._initial_sync_done = threading.Event()
 
     def register_node(
         self,
@@ -67,16 +82,33 @@ class RegistryClient:
     ) -> None:
         """
         Register this ingester's public key in OrbitDB (nodes + trust databases).
-        Raises OrbitDBError if OrbitDB is unreachable.
+        Raises OrbitDBError if OrbitDB is unreachable. If registration fails,
+        it will be retried on each trust sync cycle.
         """
-        pub_b64 = base64.b64encode(public_key_bytes).decode()
+        # Store registration details for retry
+        self._pending_registration = {
+            "ingester_id": ingester_id,
+            "public_key_bytes": public_key_bytes,
+            "key_version": key_version,
+            "metadata": metadata,
+        }
+        self._do_register()
+
+    def _do_register(self) -> bool:
+        """Attempt to register in OrbitDB. Returns True on success."""
+        if not self._pending_registration:
+            return True
+
+        reg = self._pending_registration
+        pub_b64 = base64.b64encode(reg["public_key_bytes"]).decode()
         base = self._config.url.rstrip("/")
+        ingester_id = reg["ingester_id"]
 
         # PUT /nodes/{ingester_id}
         node_data = {
             "public_key": pub_b64,
-            "key_version": key_version,
-            **metadata,
+            "key_version": reg["key_version"],
+            **reg["metadata"],
         }
         _http_request(f"{base}/nodes/{ingester_id}", method="PUT", data=node_data)
         logger.info("Registered node %s in OrbitDB", ingester_id)
@@ -84,26 +116,48 @@ class RegistryClient:
         # PUT /trust/{ingester_id}
         trust_data = {
             "public_key": pub_b64,
-            "key_version": key_version,
+            "key_version": reg["key_version"],
             "status": "active",
         }
         _http_request(f"{base}/trust/{ingester_id}", method="PUT", data=trust_data)
         logger.info("Published trust entry for %s in OrbitDB", ingester_id)
 
+        self._pending_registration = None
+        return True
+
     def start_trust_sync(self) -> None:
         """Start background daemon thread that periodically fetches GET /trust
-        and updates the local TrustStore."""
+        and updates the local TrustStore. Also retries failed registration."""
         if self._sync_thread is not None:
             return
 
         def _sync_loop():
+            first_iteration = True
             while not self._stop_event.is_set():
+                # Retry registration if it failed at startup
+                if self._pending_registration:
+                    try:
+                        self._do_register()
+                    except OrbitDBError as e:
+                        logger.warning("Registration retry failed (will retry): %s", e)
+                    except Exception:
+                        logger.exception("Registration retry unexpected error")
+
                 try:
                     self.sync_trust_once()
                 except OrbitDBError as e:
                     logger.warning("Trust sync failed (will retry): %s", e)
                 except Exception:
                     logger.exception("Trust sync unexpected error (will retry)")
+
+                # Signal that the initial sync has happened (whether successful
+                # or failed). Consumers waiting for a warm trust store can now
+                # proceed — if the sync failed, they'll start with whatever is
+                # in the local trust_list.json (possibly empty on fresh install).
+                if first_iteration:
+                    self._initial_sync_done.set()
+                    first_iteration = False
+
                 self._stop_event.wait(timeout=self._config.sync_interval)
 
         self._sync_thread = threading.Thread(
@@ -116,6 +170,21 @@ class RegistryClient:
             self._config.url,
         )
 
+    def wait_for_initial_sync(self, timeout: float = 60.0) -> bool:
+        """Block until the first trust sync cycle has completed.
+
+        Used by services (like the live transport bridge) that must have
+        a warm trust store before they start accepting P2P readings —
+        otherwise readings from valid ingesters are rejected during the
+        cold-start window.
+
+        Returns True if the initial sync completed within the timeout,
+        False if the timeout elapsed first. A False result does NOT mean
+        failure — the trust store will keep syncing in the background;
+        callers can choose whether to proceed anyway.
+        """
+        return self._initial_sync_done.wait(timeout=timeout)
+
     def sync_trust_once(self) -> None:
         """Single trust sync: GET /trust -> trust_store.update_from_dict().
         Raises OrbitDBError if OrbitDB is unreachable."""
@@ -125,6 +194,63 @@ class RegistryClient:
             raise OrbitDBError("OrbitDB /trust response missing 'keys' field")
         self._trust_store.update_from_dict(data)
         logger.debug("Trust sync complete — %d ingesters", len(data["keys"]))
+
+    def cleanup_stale_zenoh_entries(
+        self, own_bridge_id: str, local_ingester_ids: set[str],
+        is_proxied: bool = False,
+    ) -> None:
+        """Remove stale zenoh_endpoint values from OrbitDB nodes on this station.
+
+        Only cleans up entries whose ID is in ``local_ingester_ids`` (the set of
+        ingester IDs on this station, scanned from local key files). Does not
+        touch entries from other stations.
+
+        Handles two cases:
+          1. Old ingester entries on this station that registered zenoh_endpoint
+             before the Zenoh decoupling (only the bridge should register endpoints).
+          2. Role change from public to proxied — the bridge's own entry
+             should not have zenoh_endpoint when in proxy mode.
+        """
+        base = self._config.url.rstrip("/")
+        try:
+            data = _http_request(f"{base}/nodes")
+        except OrbitDBError as e:
+            logger.warning("Cleanup: could not fetch nodes: %s", e)
+            return
+
+        nodes = data.get("nodes", [])
+        cleaned = 0
+
+        for node in nodes:
+            nid = node.get("_id", "")
+            ep = node.get("zenoh_endpoint", "")
+
+            if not ep:
+                continue
+
+            # Only clean entries belonging to this station
+            if nid not in local_ingester_ids:
+                continue
+
+            # Case 1: non-bridge entry with zenoh_endpoint (stale ingester registration)
+            # Case 2: bridge's own entry when switching to proxy mode
+            should_clean = (nid != own_bridge_id) or is_proxied
+
+            if should_clean:
+                try:
+                    clean_data = {
+                        k: v for k, v in node.items()
+                        if k not in ("zenoh_endpoint", "zenoh_endpoint_lan", "_id")
+                    }
+                    _http_request(f"{base}/nodes/{nid}", method="PUT", data=clean_data)
+                    reason = "now proxied" if nid == own_bridge_id else "stale ingester endpoint"
+                    logger.info("Cleanup: removed zenoh_endpoint from %s (%s)", nid, reason)
+                    cleaned += 1
+                except OrbitDBError as e:
+                    logger.warning("Cleanup: failed to update %s: %s", nid, e)
+
+        if cleaned > 0:
+            logger.info("Cleanup: cleaned %d stale zenoh_endpoint(s) on this station", cleaned)
 
     def discover_zenoh_peers(self, exclude_ids: set[str] | None = None) -> list[str]:
         """Fetch GET /nodes and return one zenoh_endpoint per remote node.

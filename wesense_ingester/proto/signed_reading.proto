@@ -6,4 +6,8 @@ message SignedReading {
   bytes signature = 2;
   string ingester_id = 3;
   uint32 key_version = 4;
+  // Ed25519 public key (raw 32 bytes) used for signing.
+  // Included in the envelope so P2P-received readings are self-verifying
+  // without requiring a live trust store lookup. See governance-and-trust.md.
+  bytes public_key = 5;
 }

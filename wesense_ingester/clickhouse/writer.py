@@ -32,17 +32,23 @@ class ClickHouseConfig:
     password: str = ""
     database: str = "wesense"
     table: str = "sensor_readings"
+    tls_enabled: bool = False
+    tls_ca_certfile: str = ""
 
     @classmethod
     def from_env(cls) -> "ClickHouseConfig":
         """Create config from environment variables with sensible defaults."""
+        tls_enabled = os.getenv("TLS_ENABLED", "").lower() == "true"
+        port = 8443 if tls_enabled else int(os.getenv("CLICKHOUSE_PORT", "8123"))
         return cls(
             host=os.getenv("CLICKHOUSE_HOST", "localhost"),
-            port=int(os.getenv("CLICKHOUSE_PORT", "8123")),
+            port=port,
             user=os.getenv("CLICKHOUSE_USER", "default"),
             password=os.getenv("CLICKHOUSE_PASSWORD", ""),
             database=os.getenv("CLICKHOUSE_DATABASE", "wesense"),
             table=os.getenv("CLICKHOUSE_TABLE", "sensor_readings"),
+            tls_enabled=tls_enabled,
+            tls_ca_certfile=os.getenv("TLS_CA_CERTFILE", ""),
         )
 
 
@@ -96,13 +102,21 @@ class BufferedClickHouseWriter:
     def _connect(self) -> None:
         """Connect to ClickHouse."""
         try:
-            self._client = clickhouse_connect.get_client(
+            ch_kwargs = dict(
                 host=self.config.host,
                 port=self.config.port,
                 username=self.config.user,
                 password=self.config.password,
                 database=self.config.database,
             )
+            if self.config.tls_enabled:
+                ch_kwargs["secure"] = True
+                if self.config.tls_ca_certfile and os.path.exists(self.config.tls_ca_certfile):
+                    ch_kwargs["verify"] = True
+                    ch_kwargs["ca_cert"] = self.config.tls_ca_certfile
+                else:
+                    ch_kwargs["verify"] = False
+            self._client = clickhouse_connect.get_client(**ch_kwargs)
             logger.info(
                 "Connected to ClickHouse at %s:%d/%s",
                 self.config.host, self.config.port, self.config.database,

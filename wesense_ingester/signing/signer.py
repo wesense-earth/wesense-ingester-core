@@ -23,13 +23,19 @@ class ReadingSigner:
         self._km = key_manager
 
     def sign(self, payload: bytes) -> SignedReading:
-        """Sign a payload and wrap it in a SignedReading envelope."""
+        """Sign a payload and wrap it in a SignedReading envelope.
+
+        Includes the signer's public_key in the envelope so P2P-received
+        readings are self-verifying without a trust store lookup. See
+        governance-and-trust.md §"Trust Retention — Two Distinct Concerns".
+        """
         signature = self._km.private_key.sign(payload)
         envelope = SignedReading(
             payload=payload,
             signature=signature,
             ingester_id=self._km.ingester_id,
             key_version=self._km.key_version,
+            public_key=self._km.public_key_bytes,
         )
         return envelope
 

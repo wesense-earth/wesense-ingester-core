@@ -177,6 +177,7 @@ SUBDIVISION_NAME_TO_ISO: dict[tuple[str, str], str] = {
     ("us", "Wisconsin"): "wi",
     ("us", "Wyoming"): "wy",
     ("us", "District of Columbia"): "dc",
+    ("us", "Washington, D.C."): "dc",
 
     # =========================================================================
     # United Kingdom — uses "gb" country code (ISO standard)
@@ -204,7 +205,7 @@ SUBDIVISION_NAME_TO_ISO: dict[tuple[str, str], str] = {
     ("ca", "Nunavut"): "nu",
 
     # =========================================================================
-    # Germany (common states)
+    # Germany
     # =========================================================================
     ("de", "Bavaria"): "by",
     ("de", "Berlin"): "be",
@@ -212,6 +213,311 @@ SUBDIVISION_NAME_TO_ISO: dict[tuple[str, str], str] = {
     ("de", "Hesse"): "he",
     ("de", "North Rhine-Westphalia"): "nw",
     ("de", "Saxony"): "sn",
+    ("de", "Baden-Wuerttemberg"): "bw",
+    ("de", "Lower Saxony"): "ni",
+    ("de", "Rheinland-Pfalz"): "rp",
+    ("de", "Saxony-Anhalt"): "st",
+    ("de", "Schleswig-Holstein"): "sh",
+    ("de", "Brandenburg"): "bb",
+    ("de", "Thuringia"): "th",
+    ("de", "Bremen"): "hb",
+    ("de", "Mecklenburg-Vorpommern"): "mv",
+    ("de", "Saarland"): "sl",
+
+    # =========================================================================
+    # Poland
+    # =========================================================================
+    ("pl", "Lesser Poland Voivodeship"): "ma",
+    ("pl", "Swietokrzyskie"): "sk",
+    ("pl", "Lower Silesian Voivodeship"): "ds",
+    ("pl", "Greater Poland Voivodeship"): "wp",
+    ("pl", "Pomeranian Voivodeship"): "pm",
+    ("pl", "Silesian Voivodeship"): "sl",
+    ("pl", "Masovian Voivodeship"): "mz",
+    ("pl", "Lubusz"): "lb",
+    ("pl", "Subcarpathian Voivodeship"): "pk",
+    ("pl", "Lublin Voivodeship"): "lu",
+    ("pl", "West Pomeranian Voivodeship"): "zp",
+    ("pl", "Lodz Voivodeship"): "ld",
+    ("pl", "Opole Voivodeship"): "op",
+    ("pl", "Kuyavian-Pomeranian Voivodeship"): "kp",
+    ("pl", "Podlaskie"): "pd",
+    ("pl", "Warmian-Masurian Voivodeship"): "wn",
+
+    # =========================================================================
+    # Netherlands
+    # =========================================================================
+    ("nl", "Groningen"): "gr",
+    ("nl", "South Holland"): "zh",
+    ("nl", "North Brabant"): "nb",
+    ("nl", "Utrecht"): "ut",
+    ("nl", "Gelderland"): "ge",
+    ("nl", "North Holland"): "nh",
+    ("nl", "Overijssel"): "ov",
+    ("nl", "Limburg"): "li",
+    ("nl", "Friesland"): "fr",
+    ("nl", "Flevoland"): "fl",
+    ("nl", "Zeeland"): "ze",
+    ("nl", "Drenthe"): "dr",
+
+    # =========================================================================
+    # Russia
+    # =========================================================================
+    ("ru", "Orenburg"): "ore",
+    ("ru", "Chelyabinsk"): "che",
+    ("ru", "Novosibirsk"): "nvs",
+    ("ru", "Sverdlovsk"): "svr",
+    ("ru", "Bashkortostan"): "ba",
+    ("ru", "Smolensk"): "smo",
+    ("ru", "St.-Petersburg"): "spb",
+    ("ru", "Rjazan"): "rya",
+    ("ru", "Nizjnij Novgorod"): "nnv",
+    ("ru", "Leningrad"): "len",
+    ("ru", "Moscow"): "mow",
+    ("ru", "Moskovskaya"): "mos",
+    ("ru", "Penza"): "pnz",
+    ("ru", "Jaroslavl"): "yar",
+    ("ru", "Krasnodarskiy"): "kda",
+    ("ru", "Tatarstan"): "ta",
+    ("ru", "Saratov"): "sar",
+    ("ru", "Vladimir"): "vla",
+    ("ru", "Rostov"): "ros",
+
+    # =========================================================================
+    # Switzerland
+    # =========================================================================
+    ("ch", "Geneva"): "ge",
+    ("ch", "Vaud"): "vd",
+    ("ch", "Zug"): "zg",
+    ("ch", "Schwyz"): "sz",
+    ("ch", "Bern"): "be",
+    ("ch", "Zurich"): "zh",
+    ("ch", "Fribourg"): "fr",
+    ("ch", "Appenzell Ausserrhoden"): "ar",
+    ("ch", "Neuchatel"): "ne",
+    ("ch", "Lucerne"): "lu",
+    ("ch", "Aargau"): "ag",
+    ("ch", "Basel-Stadt"): "bs",
+    ("ch", "Basel-Landschaft"): "bl",
+    ("ch", "Graubuenden"): "gr",
+    ("ch", "St. Gallen"): "sg",
+    ("ch", "Thurgau"): "tg",
+    ("ch", "Ticino"): "ti",
+    ("ch", "Valais"): "vs",
+    ("ch", "Solothurn"): "so",
+    ("ch", "Schaffhausen"): "sh",
+    ("ch", "Uri"): "ur",
+    ("ch", "Obwalden"): "ow",
+    ("ch", "Nidwalden"): "nw",
+    ("ch", "Glarus"): "gl",
+    ("ch", "Jura"): "ju",
+    ("ch", "Appenzell Innerrhoden"): "ai",
+
+    # =========================================================================
+    # Czech Republic
+    # =========================================================================
+    ("cz", "South Moravian"): "jm",
+    ("cz", "Olomoucky"): "ol",
+    ("cz", "Praha"): "pr",
+    ("cz", "Kralovehradecky"): "kr",
+    ("cz", "Central Bohemia"): "st",
+    ("cz", "Moravskoslezsky"): "mo",
+    ("cz", "Zlinsky"): "zl",
+    ("cz", "Vysocina"): "vy",
+    ("cz", "Pardubicky"): "pa",
+    ("cz", "Plzensky"): "pl",
+    ("cz", "Jihocesky"): "jc",
+    ("cz", "Liberecky"): "li",
+    ("cz", "Karlovarsky"): "ka",
+    ("cz", "Ustecky"): "us",
+
+    # =========================================================================
+    # France
+    # =========================================================================
+    ("fr", "Lorraine"): "lor",
+    ("fr", "Rhone-Alpes"): "ara",
+    ("fr", "Pays de la Loire"): "pdl",
+    ("fr", "Aquitaine"): "naq",
+    ("fr", "Languedoc-Roussillon"): "occ",
+    ("fr", "Provence-Alpes-Cote d'Azur"): "pac",
+    ("fr", "Ile-de-France"): "idf",
+    ("fr", "Midi-Pyrenees"): "occ",
+    ("fr", "Alsace"): "ges",
+    ("fr", "Champagne-Ardenne"): "ges",
+    ("fr", "Haute-Normandie"): "nor",
+    ("fr", "Bourgogne"): "bfc",
+    ("fr", "Bretagne"): "bre",
+    ("fr", "Centre"): "cvl",
+    ("fr", "Picardie"): "hdf",
+    ("fr", "Nord-Pas-de-Calais"): "hdf",
+    ("fr", "Basse-Normandie"): "nor",
+    ("fr", "Poitou-Charentes"): "naq",
+    ("fr", "Limousin"): "naq",
+    ("fr", "Auvergne"): "ara",
+    ("fr", "Franche-Comte"): "bfc",
+    ("fr", "Corse"): "cor",
+
+    # =========================================================================
+    # Taiwan
+    # =========================================================================
+    ("tw", "Taiwan"): "twn",
+    ("tw", "Taipei"): "tpe",
+    ("tw", "Kaohsiung"): "khh",
+    ("tw", "Taichung"): "txg",
+    ("tw", "Tainan"): "tnn",
+
+    # =========================================================================
+    # Hungary
+    # =========================================================================
+    ("hu", "Budapest"): "bu",
+    ("hu", "Pest"): "pe",
+    ("hu", "Gyor-Moson-Sopron"): "gs",
+    ("hu", "Fejer"): "fe",
+    ("hu", "Veszprem"): "ve",
+    ("hu", "Komarom-Esztergom"): "ke",
+    ("hu", "Bacs-Kiskun"): "bk",
+    ("hu", "Baranya"): "ba",
+    ("hu", "Bekes"): "be",
+    ("hu", "Borsod-Abauj-Zemplen"): "bz",
+    ("hu", "Csongrad"): "cs",
+    ("hu", "Hajdu-Bihar"): "hb",
+    ("hu", "Heves"): "he",
+    ("hu", "Jasz-Nagykun-Szolnok"): "jn",
+    ("hu", "Nograd"): "no",
+    ("hu", "Somogy"): "so",
+    ("hu", "Szabolcs-Szatmar-Bereg"): "sz",
+    ("hu", "Tolna"): "to",
+    ("hu", "Vas"): "va",
+    ("hu", "Zala"): "za",
+
+    # =========================================================================
+    # Belgium
+    # =========================================================================
+    ("be", "Flanders"): "vl",
+    ("be", "Wallonia"): "wa",
+    ("be", "Brussels"): "bru",
+
+    # =========================================================================
+    # Croatia
+    # =========================================================================
+    ("hr", "Brodsko-Posavska"): "bp",
+    ("hr", "Zagrebacka"): "zg",
+    ("hr", "Grad Zagreb"): "gz",
+    ("hr", "Splitsko-Dalmatinska"): "sd",
+    ("hr", "Primorsko-Goranska"): "pg",
+    ("hr", "Istarska"): "is",
+    ("hr", "Osjecko-Baranjska"): "ob",
+
+    # =========================================================================
+    # Austria
+    # =========================================================================
+    ("at", "Carinthia"): "ktn",
+    ("at", "Lower Austria"): "noe",
+    ("at", "Tyrol"): "tir",
+    ("at", "Upper Austria"): "ooe",
+    ("at", "Vienna"): "vie",
+    ("at", "Salzburg"): "sbg",
+    ("at", "Styria"): "stm",
+    ("at", "Burgenland"): "bgl",
+    ("at", "Vorarlberg"): "vbg",
+
+    # =========================================================================
+    # Brazil
+    # =========================================================================
+    ("br", "Rio de Janeiro"): "rj",
+    ("br", "Rio Grande do Sul"): "rs",
+    ("br", "Sao Paulo"): "sp",
+
+    # =========================================================================
+    # South Africa
+    # =========================================================================
+    ("za", "Western Cape"): "wc",
+    ("za", "Eastern Cape"): "ec",
+    ("za", "Gauteng"): "gt",
+    ("za", "KwaZulu-Natal"): "kzn",
+
+    # =========================================================================
+    # Romania
+    # =========================================================================
+    ("ro", "Timis"): "tm",
+
+    # =========================================================================
+    # Argentina
+    # =========================================================================
+    ("ar", "Buenos Aires"): "ba",
+    ("ar", "Buenos Aires F.D."): "cba",
+    ("ar", "Cordoba"): "co",
+
+    # =========================================================================
+    # Mexico
+    # =========================================================================
+    ("mx", "Mexico City"): "cdmx",
+    ("mx", "Chihuahua"): "chh",
+    ("mx", "Baja California"): "bcn",
+    ("mx", "Jalisco"): "jal",
+
+    # =========================================================================
+    # Other countries with data
+    # =========================================================================
+    ("dk", "Central Jutland"): "mid",
+    ("dk", "South Denmark"): "syd",
+    ("dk", "Capital Region"): "hov",
+    ("dk", "North Denmark"): "nor",
+    ("dk", "Zealand"): "sja",
+
+    ("se", "Norrbotten"): "nrb",
+    ("se", "Stockholm"): "sto",
+    ("se", "Vastra Gotaland"): "vgo",
+    ("se", "Skane"): "ska",
+
+    ("no", "Finnmark Fylke"): "fin",
+    ("no", "Hordaland"): "hor",
+    ("no", "Nord-Trondelag"): "ntr",
+    ("no", "Oslo"): "osl",
+
+    ("fi", "Uusimaa"): "usi",
+    ("fi", "Lapland"): "lap",
+
+    ("es", "Catalonia"): "ct",
+    ("es", "Andalusia"): "an",
+    ("es", "Murcia"): "mc",
+    ("es", "Extremadura"): "ex",
+    ("es", "Basque Country"): "pv",
+    ("es", "Madrid"): "md",
+
+    ("it", "Lombardy"): "lom",
+    ("it", "Piedmont"): "pie",
+    ("it", "Tuscany"): "tos",
+    ("it", "Sardinia"): "sar",
+
+    ("sk", "Nitriansky"): "ni",
+
+    ("si", "Ilirska Bistrica"): "ib",
+
+    ("ua", "Crimea"): "crm",
+    ("ua", "Mykolaiv"): "mk",
+
+    ("pt", "Madeira"): "mad",
+
+    ("jp", "Fukushima"): "fks",
+
+    ("cn", "Zhejiang Sheng"): "zj",
+
+    ("kz", "Almaty Qalasy"): "ala",
+
+    ("li", "Schaan"): "sch",
+
+    ("lt", "Vilnius County"): "vil",
+
+    ("md", "Chisinau"): "cu",
+
+    ("ge", "Tbilisi"): "tb",
+
+    ("pr", "Trujillo Alto"): "ta",
+    ("pr", "Cidra"): "cid",
+
+    ("in", "Maharashtra"): "mh",
+    ("in", "Central Java"): "jt",
 }
 
 # Pre-built case-insensitive lookup for subdivision names

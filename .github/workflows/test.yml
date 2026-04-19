@@ -38,14 +38,18 @@ jobs:
           - wesense-ingester-meshtastic
           - wesense-ingester-wesense
           - wesense-ingester-homeassistant
-          - wesense-zenoh-bridge
-          - wesense-archiver
+          - wesense-ingester-govaq-nz
+          - wesense-live-transport
+          - wesense-storage-broker
+          - wesense-zenoh-api
 
     steps:
       - name: Trigger rebuild of ${{ matrix.repo }}
-        uses: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.CORE_DISPATCH_TOKEN }}
-          repository: wesense-earth/${{ matrix.repo }}
-          event-type: core-updated
-          client-payload: '{"core_branch": "${{ github.ref_name }}"}'
+        env:
+          GH_TOKEN: ${{ secrets.CORE_DISPATCH_TOKEN }}
+        run: |
+          # Use workflow_dispatch (not repository_dispatch) so we can target
+          # the matching branch. repository_dispatch always runs on main.
+          gh workflow run docker-build.yml \
+            --repo wesense-earth/${{ matrix.repo }} \
+            --ref ${{ github.ref_name }}

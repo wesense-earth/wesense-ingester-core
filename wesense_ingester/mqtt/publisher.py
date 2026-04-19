@@ -8,6 +8,7 @@ construction: {prefix}/{data_source}/{country}/{subdivision}/{device_id}
 import json
 import logging
 import os
+import ssl
 from dataclasses import dataclass
 from typing import Any, Optional
 
@@ -30,18 +31,49 @@ class MQTTPublisherConfig:
     password: Optional[str] = None
     client_id: str = "wesense-publisher"
     topic_prefix: str = "wesense/decoded"
+    use_tls: bool = False
+    ca_certfile: Optional[str] = None
 
     @classmethod
     def from_env(cls, client_id: str = "wesense-publisher") -> "MQTTPublisherConfig":
         """Create config from environment variables."""
+        # Prefer WESENSE_OUTPUT_* env vars (for the decoded-output channel)
+        # and fall back to generic MQTT_* vars. Stations running input +
+        # output MQTT on different brokers set both; stations running one
+        # broker set only the generic vars. Either way works.
         return cls(
-            broker=os.getenv("MQTT_BROKER", "localhost"),
-            port=int(os.getenv("MQTT_PORT", "1883")),
-            username=os.getenv("MQTT_USERNAME"),
-            password=os.getenv("MQTT_PASSWORD"),
+            broker=os.getenv("WESENSE_OUTPUT_BROKER") or os.getenv("MQTT_BROKER", "localhost"),
+            port=int(os.getenv("WESENSE_OUTPUT_PORT") or os.getenv("MQTT_PORT", "1883")),
+            username=os.getenv("WESENSE_OUTPUT_USERNAME") or os.getenv("MQTT_USERNAME"),
+            password=os.getenv("WESENSE_OUTPUT_PASSWORD") or os.getenv("MQTT_PASSWORD"),
             client_id=client_id,
             topic_prefix=os.getenv("MQTT_TOPIC_PREFIX", "wesense/decoded"),
+            use_tls=os.getenv("MQTT_USE_TLS", "").lower() in ("true", "1", "yes"),
+            ca_certfile=os.getenv("TLS_CA_CERTFILE"),
         )
+
+
+def configure_mqtt_tls(client: "mqtt.Client", ca_certfile: Optional[str] = None) -> None:
+    """
+    Configure TLS on a paho-mqtt client if MQTT_USE_TLS is enabled.
+
+    Call this on any mqtt.Client before connect() to enable MQTTS.
+    Uses TLS_CA_CERTFILE env var for custom CA, or system CA store
+    (which trusts Let's Encrypt) if unset.
+
+    Args:
+        client: paho-mqtt Client instance
+        ca_certfile: Path to CA cert file (overrides TLS_CA_CERTFILE env var)
+    """
+    if os.getenv("MQTT_USE_TLS", "").lower() not in ("true", "1", "yes"):
+        return
+
+    ca = ca_certfile or os.getenv("TLS_CA_CERTFILE")
+    if ca:
+        client.tls_set(ca_certs=ca)
+    else:
+        client.tls_set()  # System CA store (trusts Let's Encrypt)
+    logger.info("MQTT TLS configured (ca=%s)", ca or "system")
 
 
 class WeSensePublisher:
@@ -80,6 +112,13 @@ class WeSensePublisher:
         if self.config.username:
             self._client.username_pw_set(self.config.username, self.config.password)
 
+        if self.config.use_tls:
+            if self.config.ca_certfile:
+                self._client.tls_set(ca_certs=self.config.ca_certfile)
+            else:
+                self._client.tls_set()  # Uses system CA store (trusts Let's Encrypt)
+            logger.info("MQTT TLS enabled (ca=%s)", self.config.ca_certfile or "system")
+
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
 
@@ -87,8 +126,9 @@ class WeSensePublisher:
             self._client.connect(self.config.broker, self.config.port, keepalive=60)
             self._client.loop_start()
             logger.info(
-                "MQTT publisher connecting to %s:%d",
+                "MQTT publisher connecting to %s:%d%s",
                 self.config.broker, self.config.port,
+                " (TLS)" if self.config.use_tls else "",
             )
         except Exception as e:
             logger.error("MQTT connection failed: %s", e)

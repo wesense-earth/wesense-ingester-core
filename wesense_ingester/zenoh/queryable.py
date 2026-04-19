@@ -8,6 +8,7 @@ background threads to avoid blocking Zenoh callbacks.
 
 import json
 import logging
+import os
 import threading
 from typing import Any, Optional
 
@@ -99,13 +100,21 @@ class ZenohQueryable:
 
         if self._ch_config and _CH_AVAILABLE:
             try:
-                self._ch_client = clickhouse_connect.get_client(
+                ch_kwargs = dict(
                     host=self._ch_config.host,
                     port=self._ch_config.port,
                     username=self._ch_config.user,
                     password=self._ch_config.password,
                     database=self._ch_config.database,
                 )
+                if self._ch_config.tls_enabled:
+                    ch_kwargs["secure"] = True
+                    if self._ch_config.tls_ca_certfile and os.path.exists(self._ch_config.tls_ca_certfile):
+                        ch_kwargs["verify"] = True
+                        ch_kwargs["ca_cert"] = self._ch_config.tls_ca_certfile
+                    else:
+                        ch_kwargs["verify"] = False
+                self._ch_client = clickhouse_connect.get_client(**ch_kwargs)
                 logger.info("Queryable ClickHouse client connected")
             except Exception as e:
                 logger.error("Queryable ClickHouse connection failed: %s", e)
