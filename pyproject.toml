@@ -17,7 +17,7 @@ dependencies = [
 
 [project.optional-dependencies]
 p2p = [
-    "eclipse-zenoh>=1.0.0,<1.8.0",
+    "eclipse-zenoh>=1.0.0,<1.11.0",
 ]
 dev = [
     "pytest>=7.0",
