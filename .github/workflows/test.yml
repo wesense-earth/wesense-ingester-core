@@ -39,6 +39,7 @@ jobs:
           - wesense-ingester-wesense
           - wesense-ingester-homeassistant
           - wesense-ingester-govaq-nz
+          - wesense-ingester-govaq-au
           - wesense-live-transport
           - wesense-storage-broker
           - wesense-zenoh-api
